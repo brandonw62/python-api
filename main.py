@@ -1,36 +1,45 @@
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, Response
+from fastapi.params import Body
+from pydantic import BaseModel
+from typing import Optional
+from random import randrange
 
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route("/")
-def home():
-    return "Home"
+class Post(BaseModel):
+    title: str
+    content: str
+    published: bool = True
+    rating: Optional[int] = None
 
-@app.route("/get-user/<user_id>")
-def get_user(user_id):
-    user_data = {
-        "user_id": user_id,
-        "name": "John Doe",
-        "email": "john.doe@example.com"
-    }
+my_posts = [{"title": "title of post 1", "content": "content of post 1", "id": 1},
+            {"title": "favorite foods", "content": "I like pizza", "id": 2}]
 
-    extra = request.args.get("extra")
-    if extra:
-        user_data["extra"] = extra
-    
-    # Example request: http://127.0.0.1:5000/get-user/123?extra="World"
+def find_post(id):
+    for post in my_posts:
+        if post['id'] == id:
+            return post
 
-    return jsonify(user_data), 200
+@app.get("/")
+async def root():
+    return {"message": "Welcome to my api"}
 
-@app.route("/create-user", methods=["POST"])
-def create_user():
-    if request.method == "POST":
-        pass
-    data = request.get_json()
+@app.get("/posts")
+def get_posts():
+    return {"data": my_posts }
 
-    # Cant currently test in the browser. Tested with Postman
+@app.post("/posts")
+def create_posts(post: Post):
+    post_dict = post.dict()
+    post_dict['id'] = randrange(0, 1000000)
 
-    return jsonify(data), 201
- 
-if __name__ == "__main__":
-    app.run(debug=True)
+    my_posts.append(post_dict)
+    return {"data": post_dict}
+
+@app.get("/posts/{id}")
+def get_post(id: int, response: Response):
+    post = find_post(id)
+    if not post:
+        response.status_code = 404
+    print(post)
+    return {"post_detail": post}
